@@ -7,3 +7,7 @@ class LocalException(Exception):
 
 class UserInputException(LocalException):
     pass
+
+
+class CommandExecutionError(LocalException):
+    pass

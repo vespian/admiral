@@ -7,9 +7,13 @@ from __future__ import unicode_literals
 
 import logging
 import logging.handlers as lh
-import yaml
 
-import admiral.exception as exception
+
+def trim_hash(in_hash, hash_keys):
+    if hash_keys:
+        return {k: in_hash[k] for k in hash_keys}
+    else:
+        return in_hash
 
 
 def init_logging(verbosity=0, std_err=False, syslog_facility="LOG_USER"):
@@ -43,32 +47,3 @@ def init_logging(verbosity=0, std_err=False, syslog_facility="LOG_USER"):
         stdout_h = logging.StreamHandler()
         stdout_h.setFormatter(fmt)
         logger.addHandler(stdout_h)
-
-
-def _load_config(config_file):
-    try:
-        with open(config_file) as fh:
-            config = yaml.safe_load(fh)
-    except yaml.YAMLError as e:
-        msg = "Failed to parse config file {0}: {1}"
-        raise exception.UserInputException(msg.format(config_file, str(e)))
-
-    return config
-
-
-def _validate_config(config):
-    # TODO - write config validation using i.e. cerberus library
-    pass
-
-
-def _apply_envvars(config):
-    # TODO - write configuration tempating using env vars
-    # return the same configuration for now
-    return config
-
-
-def load_config(config_file):
-    config = _load_config(config_file)
-    config = _apply_envvars(config_file)
-    _validate_config(config)
-    return config

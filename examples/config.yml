@@ -1,0 +1,38 @@
+---
+fleet_ip: 172.17.8.103
+fleet_port: 49153
+pods:
+  giant-weather:
+    all_or_none: true
+    all_together: "{{ all_together }}"
+    containers:
+        weather-redis:
+          image: redis
+        weather-front:
+          image: currentweather
+          cmd: /bin/echo "test test"
+          external_ports:
+              - "{{ weather_port }}:8080"
+          links:
+              - weather-front:db
+  just-redis:
+    all_or_none: true
+    all_together: true
+    containers:
+        some_redis:
+          image: redis
+          external_ports:
+            - "1234:1234"
+
+# Variable names should never include dashes, they will be interpreted as
+# a subtraction in the template!
+environments:
+  dev:
+    all_together: false
+    weather_port: 8082
+  test:
+    all_together: true
+    weather_port: 8081
+  prod:
+    all_together: true
+    weather_port: 8080
