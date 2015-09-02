@@ -76,19 +76,13 @@ def add(ctx, pod):
 @cli.command()
 @click.option('-p', '--pod', multiple=True,
               help="Pod to start, start everything by default")
+@click.option('-s', '--state', required=True,
+              type=click.Choice(['inactive', 'loaded', 'launched']),
+              help="State to set.")
 @click.pass_obj
-def start(ctx, pod):
+def set_state(ctx, pod, state):
     pods_conf = u.trim_hash(ctx["pods"], pod)
-    ctx["conn"].start(pods_conf)
-
-
-@cli.command()
-@click.option('-p', '--pod', multiple=True,
-              help="Pod to stop, stop all pods specified by config by default")
-@click.pass_obj
-def stop(ctx, pod):
-    pods_conf = u.trim_hash(ctx["pods"], pod)
-    ctx["conn"].stop(pods_conf)
+    ctx["conn"].set_state(pods_conf, state)
 
 
 @cli.command()

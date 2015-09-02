@@ -2,6 +2,7 @@
 
 import jinja2
 import logging
+from googleapiclient.errors import HttpError
 
 import fleet.v1 as fleet
 
@@ -40,10 +41,11 @@ MachineOf={{ pod_containers[0] }}
         template_data = {"container_name": name,
                          "all_or_none": all_or_none,
                          "all_together": all_together,
-                         "pod_containers": [x for x in pod_containers if x != name],
+                         "pod_containers": sorted([x for x in pod_containers if x != name]),
                          "container_image": data['image'],
                          "container_ports": cp,
                          "container_links": cl,
+                         "container_cmd": data.get('cmd', ''),
                          }
 
         template = jinja2.Template(self._UNIT_TEMPLATE)
@@ -72,22 +74,54 @@ MachineOf={{ pod_containers[0] }}
                                                     pod_containers=pod_containers,
                                                     all_or_none=pods_configuration[pod]['all_or_none'],
                                                     all_together=pods_configuration[pod]['all_together'])
-
                 unit = fleet.Unit(from_string=unit_str)
                 try:
-                    unit = fleet_client.create_unit(container, unit)
+                    unit = self.conn.create_unit(container + '.service', unit)
                 except fleet.APIError as e:
                     msg = 'Unable to create unit for container {0}: {1}'.format(container, e)
                     raise exc.CommandExecutionError(msg)
 
-    def start(self, pods_configuration):
-        LOG.debug("Starting pods: {0}".format(pods_configuration))
-
-    def stop(self, pods_configuration):
-        NotImplementedError("FIXME - stopping pods is not implemented yet")
+    def set_state(self, pods_configuration, state):
+        for pod in pods_configuration:
+            msg = "Setting state for pod {0} to {1}".format(pod, state)
+            LOG.info(msg)
+            for container in pods_configuration[pod]['containers']:
+                msg = "Setting state for container {0} to {1}".format(container,
+                                                                        state)
+                LOG.debug(msg)
+                try:
+                        self.conn.set_unit_esired_state(container, state)
+                except fleet.APIError as exc:
+                    msg = 'Unable to change unit state: {0}'.format(exc)
+                    raise exc.CommandExecutionError(msg)
 
     def list(self, pods_configuration):
-        NotImplementedError("FIXME - listing pods is not implemented yet")
+        try:
+            for unit_state in self.conn.list_unit_states():
+                msg = "{0}: load-state: {1}, current-state:{2}"
+                print(msg.format(unit_state['name'],
+                                 unit_state['systemdLoadState'],
+                                 unit_state['systemdActiveState'],
+                                 ))
+        except fleet.APIError as exc:
+            msg = 'Unable to list unit state: {0}'.format(exc)
+            raise exc.CommandExecutionError(msg)
 
     def delete(self, pods_configuration):
-        NotImplementedError("FIXME - deleting pods is not implemented yet")
+        for pod in pods_configuration:
+            LOG.warn("Removing pod {0} from the cluster".format(pod))
+            for container in pods_configuration[pod]['containers']:
+                LOG.info("Removing container {0}".format(container))
+                try:
+                    self.conn.destroy_unit(container)
+                except HttpError as exc:
+                    # FIXME - fleet library I am using has a problem with
+                    # decoding JSON, instead of proper exception you get:
+                    # TypeError: the JSON object must be str, not 'bytes'
+                    # After fixing it, we should check the reason of the exception
+                    # and if it's 404 - ignore it(container does not exists
+                    # already).
+                    pass
+                except fleet.APIError as exc:
+                    msg = 'Unable to list unit state: {0}'.format(exc)
+                    raise exc.CommandExecutionError(msg)

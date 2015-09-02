@@ -51,6 +51,12 @@ def _normalize_container_names(config, env):
         new_h = {}
         for old_name in config['pods'][pod]['containers']:
             new_name = "{0}_{1}_{2}".format(env, pod, old_name)
+            if 'links' in config['pods'][pod]['containers'][old_name]:
+                new_links = []
+                old_links = config['pods'][pod]['containers'][old_name]['links']
+                for link in old_links:
+                    new_links.append(new_name + ':' + link.split(':')[1])
+                config['pods'][pod]['containers'][old_name]['links'] = new_links
             new_h[new_name] = config['pods'][pod]['containers'][old_name]
         config['pods'][pod]['containers'] = new_h
 
