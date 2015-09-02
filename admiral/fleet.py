@@ -15,8 +15,8 @@ class Fleet():
     _UNIT_TEMPLATE = """
 [Unit]
 Description=Unit created by Admiral tool for container {{ container_name }}
-{% if all_or_none and pod_containers %}
-BindsTo={{ ' '.join(pod_containers) }}
+{% if binds_to %}
+BindsTo={{ '.service '.join(binds_to) }}.service
 {% endif -%}
 After=docker.service
 Requires=docker.service
@@ -28,24 +28,23 @@ ExecStartPre=-/usr/bin/docker rm {{ container_name }}
 ExecStartPre=/usr/bin/docker pull {{ container_image }}
 ExecStart=/usr/bin/docker run {{ container_links }} {{ container_ports }} --name {{ container_name }} {{ container_image }} {{ container_cmd }}
 ExecStop=/usr/bin/docker stop {{ container_name }}
-{% if all_together and pod_containers %}
+{% if machine_of %}
 
 [X-Fleet]
-MachineOf={{ pod_containers[0] }}
+MachineOf={{ machine_of }}.service
 {% endif %}
 """
 
-    def _generate_unit_file(self, name, data, pod_containers, all_or_none, all_together):
+    def _generate_unit_file(self, name, data):
         cp = ' '.join(['--publish ' + port for port in data.get('external_ports', [])])
         cl = ' '.join(['--link ' + link for link in data.get('links', [])])
         template_data = {"container_name": name,
-                         "all_or_none": all_or_none,
-                         "all_together": all_together,
-                         "pod_containers": sorted([x for x in pod_containers if x != name]),
                          "container_image": data['image'],
                          "container_ports": cp,
                          "container_links": cl,
                          "container_cmd": data.get('cmd', ''),
+                         "binds_to": data.get('binds_to', []),
+                         "machine_of": data.get('machine_of', None),
                          }
 
         template = jinja2.Template(self._UNIT_TEMPLATE)
@@ -67,13 +66,9 @@ MachineOf={{ pod_containers[0] }}
     def add(self, pods_configuration):
         for pod in pods_configuration:
             LOG.debug("Adding pod {0} to the cluster".format(pod))
-            pod_containers = pods_configuration[pod]['containers'].keys()
             for container in pods_configuration[pod]['containers']:
                 unit_str = self._generate_unit_file(name=container,
-                                                    data=pods_configuration[pod]['containers'][container],
-                                                    pod_containers=pod_containers,
-                                                    all_or_none=pods_configuration[pod]['all_or_none'],
-                                                    all_together=pods_configuration[pod]['all_together'])
+                                                    data=pods_configuration[pod]['containers'][container])
                 unit = fleet.Unit(from_string=unit_str)
                 try:
                     unit = self.conn.create_unit(container + '.service', unit)
@@ -87,10 +82,10 @@ MachineOf={{ pod_containers[0] }}
             LOG.info(msg)
             for container in pods_configuration[pod]['containers']:
                 msg = "Setting state for container {0} to {1}".format(container,
-                                                                        state)
+                                                                      state)
                 LOG.debug(msg)
                 try:
-                        self.conn.set_unit_esired_state(container, state)
+                        self.conn.set_unit_desired_state(container + ".service", state)
                 except fleet.APIError as exc:
                     msg = 'Unable to change unit state: {0}'.format(exc)
                     raise exc.CommandExecutionError(msg)
@@ -113,7 +108,7 @@ MachineOf={{ pod_containers[0] }}
             for container in pods_configuration[pod]['containers']:
                 LOG.info("Removing container {0}".format(container))
                 try:
-                    self.conn.destroy_unit(container)
+                    self.conn.destroy_unit(container + ".service")
                 except HttpError as exc:
                     # FIXME - fleet library I am using has a problem with
                     # decoding JSON, instead of proper exception you get:

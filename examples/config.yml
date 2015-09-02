@@ -6,24 +6,21 @@ fleet_port: 49153
 # FIXME - add validation for that
 pods:
   giant-weather:
-    #all_or_none: true
-    #all_together: "{{ all_together }}"
-    all_or_none: false
-    all_together: false
     containers:
         redis:
           image: docker.io/redis
         front:
+          binds_to:
+            - redis
+          machine_of: redis
           image: docker.io/vespian/currentweather-go
           external_ports:
-              - 8080:8080
+              - "{{ weather_port }}:8080"
           # FIXME links can only be in form of container:name, due to name
           # normalization
           links:
               - redis:redis
   just-redis:
-    all_or_none: true
-    all_together: true
     containers:
         redis:
           image: docker.io/redis

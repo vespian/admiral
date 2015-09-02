@@ -49,15 +49,28 @@ def _apply_envvars(config, env):
 def _normalize_container_names(config, env):
     for pod in config['pods']:
         new_h = {}
-        for old_name in config['pods'][pod]['containers']:
-            new_name = "{0}_{1}_{2}".format(env, pod, old_name)
-            if 'links' in config['pods'][pod]['containers'][old_name]:
+        h = config['pods'][pod]['containers']
+        for old_name in h:
+            new_name_f = env + "_" + pod + "_{0}"
+            # Fix links:
+            if 'links' in h[old_name]:
                 new_links = []
-                old_links = config['pods'][pod]['containers'][old_name]['links']
+                old_links = h[old_name]['links']
                 for link in old_links:
-                    new_links.append(new_name + ':' + link.split(':')[1])
-                config['pods'][pod]['containers'][old_name]['links'] = new_links
-            new_h[new_name] = config['pods'][pod]['containers'][old_name]
+                    c, alias = link.split(':')
+                    new_links.append(new_name_f.format(c) + ':' + alias)
+                h[old_name]['links'] = new_links
+
+            # Fix machine_of:
+            if 'machine_of' in h[old_name]:
+                h[old_name]['machine_of'] = new_name_f.format(h[old_name]['machine_of'])
+
+            # Fix binds_to:
+            if 'binds_to' in h[old_name]:
+                h[old_name]['binds_to'] = [new_name_f.format(unit) for unit in h[old_name]['binds_to']]
+
+            # Replace the hash:
+            new_h[new_name_f.format(old_name)] = h[old_name]
         config['pods'][pod]['containers'] = new_h
 
 
