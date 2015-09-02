@@ -1,14 +1,16 @@
 ---
 fleet_ip: 172.17.8.103
 fleet_port: 49153
+# FIXME: Container names should be only [a-zA-Z-]+, for readibility and due to
+# joining their name with env and pod name in _normalize_container_names@config.py
 pods:
   giant-weather:
     all_or_none: true
     all_together: "{{ all_together }}"
     containers:
-        weather-redis:
+        redis:
           image: redis
-        weather-front:
+        front:
           image: currentweather
           cmd: /bin/echo "test test"
           external_ports:
@@ -19,7 +21,7 @@ pods:
     all_or_none: true
     all_together: true
     containers:
-        some_redis:
+        redis:
           image: redis
           external_ports:
             - "1234:1234"

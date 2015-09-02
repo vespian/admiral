@@ -46,8 +46,18 @@ def _apply_envvars(config, env):
     return res
 
 
+def _normalize_container_names(config, env):
+    for pod in config['pods']:
+        new_h = {}
+        for old_name in config['pods'][pod]['containers']:
+            new_name = "{0}_{1}_{2}".format(env, pod, old_name)
+            new_h[new_name] = config['pods'][pod]['containers'][old_name]
+        config['pods'][pod]['containers'] = new_h
+
+
 def load_config(config_file, environment):
     config = _load_config(config_file)
     _validate_config(config)
     config = _apply_envvars(config, environment)
+    _normalize_container_names(config, environment)
     return config
