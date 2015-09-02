@@ -16,6 +16,18 @@ LOG = logging.getLogger(__name__)
 
 
 def handle_exceptions(f):
+    """Generic exception handling and logging
+
+    This decorator takes care of logging exceptions (if possible) so that they
+    could be analyzed later. It also tries to translate some of the well-known
+    conditions to more human-friendly form.
+
+    Args:
+        f: function to wrap
+
+    Returns:
+        Wrapped function
+    """
     @functools.wraps(f)
     def wrapper(*args, **kwargs):
         try:
@@ -52,8 +64,18 @@ def handle_exceptions(f):
 @handle_exceptions
 @click.pass_context
 def cli(ctx, env, verbose, std_err, config_file):
-    # FIXME - not sure how to force click to make subcommands mandatory
+    """Main entrypoint for the script.
 
+    The task of this function is to initialize context for subcommands,
+    gather and process the data from command line.
+
+    Args:
+        env: environment to deploy to
+        verbose: integer describing desired level of verbosity
+        std_err: should the data be printed to stderr as well
+        config_file: location of the config file to read
+    """
+    # FIXME - not sure how to force click to make subcommands mandatory
     u.init_logging(verbosity=verbose, std_err=std_err)
     config = c.load_config(config_file, env)
 
@@ -81,6 +103,7 @@ def add(ctx, pod):
               help="State to set.")
 @click.pass_obj
 def set_state(ctx, pod, state):
+    # FIXME
     pods_conf = u.trim_hash(ctx["pods"], pod)
     ctx["conn"].set_state(pods_conf, state)
 
@@ -91,7 +114,7 @@ def set_state(ctx, pod, state):
 @click.pass_obj
 def list(ctx, pod):
     pods_conf = u.trim_hash(ctx["pods"], pod)
-    ctx["conn"].list(pods_conf)
+    ctx["conn"].list()
 
 
 @cli.command()

@@ -30,11 +30,8 @@ pods:
 # FIXME - add validation for that
 environments:
   dev:
-    all_together: false
     weather_port: 8082
   test:
-    all_together: true
     weather_port: 8081
   prod:
-    all_together: true
     weather_port: 8080

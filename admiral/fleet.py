@@ -36,6 +36,17 @@ MachineOf={{ machine_of }}.service
 """
 
     def _generate_unit_file(self, name, data):
+        """Create unit file basing on the data provided.
+
+        Args:
+            name: name of the container/service that the data describes
+            data: container/service related data. Please see README.md for
+                  descrition of data fields. Basically everything below
+                  pods[name] comes here.
+
+        Returns:
+            A unit file in form of a string
+        """
         cp = ' '.join(['--publish ' + port for port in data.get('external_ports', [])])
         cl = ' '.join(['--link ' + link for link in data.get('links', [])])
         template_data = {"container_name": name,
@@ -53,6 +64,15 @@ MachineOf={{ machine_of }}.service
         return unit_text
 
     def __init__(self, fleet_ip, fleet_port):
+        """Initialize Fleet object
+
+        Initialize fleet object by establishing connection and storing it in the
+        object itself.
+
+        Raises:
+            CommandExecutionError - problem occured while connecting to the
+                                    fleet cluster.
+        """
         conn_string = 'http://{ip}:{port}'.format(ip=fleet_ip, port=fleet_port)
         LOG.debug("Connecting to fleet instance at {0}".format(conn_string))
         try:
@@ -64,6 +84,17 @@ MachineOf={{ machine_of }}.service
         self.conn = fleet_client
 
     def add(self, pods_configuration):
+        """Add containers/services to the cluster
+
+        Args:
+            pods_configuration: pods data. It relates directly to the pods section
+                                from the configuration file. Please check README.md
+                                for description/meaning of the fields.
+
+        Raises:
+            CommandExecutionError - there was a problem while creating
+                                    containers/services
+        """
         for pod in pods_configuration:
             LOG.debug("Adding pod {0} to the cluster".format(pod))
             for container in pods_configuration[pod]['containers']:
@@ -77,6 +108,19 @@ MachineOf={{ machine_of }}.service
                     raise exc.CommandExecutionError(msg)
 
     def set_state(self, pods_configuration, state):
+        """Set state of the containers/services in the cluster
+
+        Args:
+            pods_configuration: pods data. It relates directly to the pods section
+                                from the configuration file. Only the pod's keys
+                                are used, fields are irrelevant.
+            state: one of 'inactive', 'loaded', 'launched' states that should be
+                   set for given pods.
+
+        Raises:
+            CommandExecutionError - there was a problem while setting the state of
+                                    containers/services
+        """
         for pod in pods_configuration:
             msg = "Setting state for pod {0} to {1}".format(pod, state)
             LOG.info(msg)
@@ -90,7 +134,13 @@ MachineOf={{ machine_of }}.service
                     msg = 'Unable to change unit state: {0}'.format(exc)
                     raise exc.CommandExecutionError(msg)
 
-    def list(self, pods_configuration):
+    def list(self):
+        """List the containers currently running in the cluster
+
+        Raises:
+            CommandExecutionError - there was a problem while communicating with
+                                    the cluster
+        """
         try:
             for unit_state in self.conn.list_unit_states():
                 msg = "{0}: load-state: {1}, current-state:{2}"
@@ -103,6 +153,17 @@ MachineOf={{ machine_of }}.service
             raise exc.CommandExecutionError(msg)
 
     def delete(self, pods_configuration):
+        """Delte containers/services from the cluster
+
+        Args:
+            pods_configuration: pods data. It relates directly to the pods section
+                                from the configuration file. Only the pod's keys
+                                are used, fields are irrelevant.
+
+        Raises:
+            CommandExecutionError - there was a problem while deleting
+                                    containers/services
+        """
         for pod in pods_configuration:
             LOG.warn("Removing pod {0} from the cluster".format(pod))
             for container in pods_configuration[pod]['containers']:

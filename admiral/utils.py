@@ -10,6 +10,18 @@ import logging.handlers as lh
 
 
 def trim_hash(in_hash, hash_keys):
+    """Filter hash/remove unwanted keys
+
+    Return a new hash only with the keys that were specified in hash_keys param,
+    remove the others.
+
+    Args:
+        in_hash: input hash
+        hash_keys: keys that should stay
+
+    Returns:
+        Filtered hash
+    """
     if hash_keys:
         return {k: in_hash[k] for k in hash_keys}
     else:
@@ -17,6 +29,18 @@ def trim_hash(in_hash, hash_keys):
 
 
 def init_logging(verbosity=0, std_err=False, syslog_facility="LOG_USER"):
+    """Init logging subsytem
+
+    Sets up logging accordig to the call arguments.
+
+    Args:
+        verbosity: how verbose should the script be:
+                   0 - silent most of the time
+                   1 - moderate logging
+                   2 - print everything
+        std_err: log the data to STDERR as well (apart from syslog)
+        syslog_facility: syslog facility to send data to
+    """
     logger = logging.getLogger()
 
     if logger.handlers:
