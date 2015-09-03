@@ -109,11 +109,8 @@ def set_state(ctx, pod, state):
 
 
 @cli.command()
-@click.option('-p', '--pod', multiple=True,
-              help="Pod to list/show, output everything by default")
 @click.pass_obj
-def list(ctx, pod):
-    pods_conf = u.trim_hash(ctx["pods"], pod)
+def list(ctx):
     ctx["conn"].list()
 
 
